@@ -1,0 +1,6 @@
+JWT_SECRET = "PRITH576";
+RESET_SECRET = "ERPO4578"
+
+module.exports = {
+    JWT_SECRET,RESET_SECRET
+}
