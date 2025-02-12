@@ -5,7 +5,7 @@ const zod = require("zod");
 const bcrypt = require("bcrypt");
 const nodemailer = require("nodemailer")
 const { User } = require("../db");
-const {JWT_SECRET,RESET_SECRET} =require("../config");
+const {JWT_SECRET,RESET_SECRET, PASS_SECRET} =require("../config");
 const { protect } = require("../authMiddleware");
 
 
@@ -138,7 +138,7 @@ router.post("/signin",async(req,res)=>{
  const {success} = signinSchema.safeParse(req.body);
  if(!success){
     return res.json({
-        msg:"Invalid input"
+        message :"Invalid input"
     })
  }
 
@@ -155,7 +155,8 @@ router.post("/signin",async(req,res)=>{
     if(!user){
         console.log("no such user")
         return res.json({
-            msg : "User doesnt exist"
+            success:false,
+            message : "User doesnt exist"
         })
     }
     
@@ -165,7 +166,8 @@ router.post("/signin",async(req,res)=>{
     if(!keyMatch){
         console.log("Wrong password")
         return res.json({
-            msg :'Wrong Password'
+            success:false,
+            message:'Wrong Password'
         })
     } 
 
@@ -185,7 +187,8 @@ router.post("/signin",async(req,res)=>{
     
     //send success response
     res.status(200).json({
-        msg : "YOU ARE LOGGED IN",
+        success:true,
+        message : "YOU ARE LOGGED IN",
         token : token,
         role : role
     })
@@ -213,118 +216,73 @@ router.post("/logout",(req,res)=>{
     })
 })
 
-
-const Transporter = nodemailer.createTransport({//nodemailer
-    service : "gmail",
-    auth : {
-        user : "prgthemessenger@gmail.com",
-        pass : "lfof yibf ejyp mhtm"
-    }
-});
 //forgot password
 router.post("/forgotPassword",async(req,res)=>{
- const {success} = emailSchema.safeParse(req.body);
- if(!success){
-    return res.json({
-        msg :"invalid input"
+    console.log("finding user")
+    await User.findOne({email : req.body.email})
+    .then(user=>{
+        if(!user){
+            console.log("user not found")
+            return res.json({message:"User not found "})
+        }
+        const token = jwt.sign({id : user._id},JWT_SECRET,{expiresIn:"1d"})
+        
+        var transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+              user: 'prgthemessenger@gmail.com',
+              pass: PASS_SECRET
+            }
+          });
+          
+          var mailOptions = {
+            from: 'youremail@gmail.com',
+            to: req.body.email ,
+            subject: 'Sending Email using Node.js',
+            text: `http://localhost:5173/reset-password/${user._id}/${token}`
+          };
+          
+          transporter.sendMail(mailOptions, function(error, info){
+            if (error) {
+              console.log(error);
+            } else {
+              return res.send({Status : "Success"})
+            }
+          });
     })
- }
- try {
-     const email = req.body.email.toLowerCase();
-     console.log("finding user mail")
-     const user = await User.findOne({
-        email
-     })
-     console.log(user)
-    
-     if(!user){
-        console.log("user not found")
-        return res.json({
-            msg : "User not found"
-        })
-     }
 
-     const userId = user._id
+})
 
-     console.log("generating reset token");
-     const resetToken = jwt.sign({userId},RESET_SECRET,{expiresIn:"15m"})
-
-     console.log("setting the reset token")
-     const resetLink = `http://localhost:3000/reset-password?token=${resetToken}`;
-
-     const mailOptions = {
-        from : "et22bthcs034@kazirangauniversity.in",
-        to : user.email,
-        subject : "Password reset",
-        html : `<p>Click<a href="${resetLink}">Here</a> to reset your password. This expires in 15min</p>`
-     };
-
-     await Transporter.sendMail(mailOptions);
+router.put("/reset-password",async(req,res)=>{
+   const  {id,token} = req.params;
+   console.log("checking password")
+   const {success} = passwordSchema.safeParse(req.body.password);
+   if(!success){
+    console.log("password validation failed")
+    return res.json({
+        Status : false ,
+        message : "Invalid Password"
+    })
+   }
+   try {
+    console.log("verifying token")
+     const decoded = jwt.verify(token,JWT_SECRET);
+     const saltRounds = 10;
+     const hashedpassword = await bcrypt.hash(req.body.password,saltRounds)
+     
+     console.log("updating password")
+     await User.findByIdAndUpdate({_id : id},{password : hashedpassword})
+     console.log("password updated")
 
      res.json({
-        msg:"Reset link sent to your Email"
+        Status : true,
+        message : "Password Updated"
      })
-     console.log("Reset link sent to mail")
- } catch (error) {
-    console.log("Forgot password error",error)
-    return  res.json({
-        msg : "Internal server error"
-    })
- }})
 
-
-
-//reset password
-router.put("/reset-password",async(req,res)=>{
- const {token,password} = req.body
- 
- console.log("recieved password : ",password)
- const {success} = passwordSchema.safeParse({password});
- 
- if(!success){
-    console.log("validation failer")
-   return res.json({
-        msg : "Invalid Password"
-    })
- }
- 
- console.log("checking for reset token")
- if(!token){
-   return res.json({
-    msg :"Reset token required"
-   })
- }
- 
- try {
- console.log("decoding reset token")
- const decoded = jwt.verify(token,RESET_SECRET);
-
- const userId = decoded.userId;
- const saltRounds = 10;
- const hashedpassword = await bcrypt.hash(password,saltRounds);
- 
- console.log("finding user and updating the password ")
- const user = await User.findByIdAndUpdate(userId,{password : hashedpassword});
-
- if(!user){
-    console.log("user not found")
-    return res.json({
-        msg : "User not found"
-    })
- }
-
- console.log("Password updated")
- res.json({
-    msg:"Password updated"
- })
-
- } catch (error) {
-console.log("Error",error)
-return res.status(400).json({
-    msg : "Invalid token"
-})
- }
- 
+   } catch (error) {
+    console.log("error : ",error)
+   }
+  
 })
 
 //update user
@@ -347,8 +305,9 @@ router.put("/update",protect,async(req,res)=>{
        
          console.log("updating user")
          const updatedUser =  await User.updateOne({_id: req.user.id},updatefields)
-
+         
          res.json({
+            updatedUser,
             msg : "Updated successfully"
          })
         
@@ -364,11 +323,9 @@ router.put("/update",protect,async(req,res)=>{
 //delete account
 router.delete("/delete",protect,async (req,res)=>{
     try {
-        console.log("getting user id")
-        const userId = req.user.id;
-        
+        console.log("getting user id and deleting")
         //find the user and delete
-        await User.findByIdAndDelete(userId);
+        await User.findByIdAndDelete(req.user.id);
         
         //clear auth token
         res.clearCookie("token"); 

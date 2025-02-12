@@ -1,6 +1,7 @@
 JWT_SECRET = "PRITH576";
 RESET_SECRET = "ERPO4578"
+PASS_SECRET = "lfof yibf ejyp mhtm";
 
 module.exports = {
-    JWT_SECRET,RESET_SECRET
+    JWT_SECRET,RESET_SECRET,PASS_SECRET
 }

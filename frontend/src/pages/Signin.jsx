@@ -4,7 +4,7 @@ import Formbutton from "../components/Formbutton";
 import Formheading from "../components/Formheading";
 import Forminput from "../components/Forminput";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 export default function Signin(){
 
@@ -22,12 +22,15 @@ export default function Signin(){
                const response = await axios.post("http://localhost:3000/api/v1/user/signin",{
                 username,password
             },{withCredentials : true})
-            
-            alert("Sing in successful")
+        
+            if(!response.data.success){
+              return alert("Invalid Input"); 
+            }
             
             if(response.data.role === "user"){
              navigate("/userDashboard")
-            }else{
+            }
+            if(response.data.role==="admin"){
                 navigate("/adminDashboard")
             }
             
@@ -47,8 +50,11 @@ export default function Signin(){
                 <Forminput placeholder={"abc123"} label={"Password"} type={"password"} onChange={(e)=>{
                     setPassword(e.target.value)
                 }}/>
+                
                 <Bottomwarning label={"New here ?"} buttonText={"Sign up"} to={"/signup"}/>
-                <Formbutton label={"Sign in"} onClick={handleSubmit} disabled={isButtonDisabled()} />
+               <div  className="text-xs underline mb-2"><Link to={"/forgotPassword"}>Forgot Password</Link></div>
+
+                <Formbutton label={"Sign in"} onClick={handleSubmit}  disabled={isButtonDisabled()} />
             </div>
         </div>
       </div>   
