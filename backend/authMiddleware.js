@@ -37,7 +37,7 @@ const adminProtect = (req,res,next)=>{
     try {
 
         console.log("Extracting token from cookie")
-        const token = res.cookies.token;
+        const token = req.cookies.token;
  
         if(!token){
          console.log("no token found")
@@ -50,14 +50,16 @@ const adminProtect = (req,res,next)=>{
         req.user = { id : decoded.userId, role : decoded.role} 
         if(decoded.role !== "admin"){
             return res.json({
-                msg : "admin role required"
+                Status : false,
+                message : "admin role required"
             })
         }
        next();
     } catch (error) {
         console.log("error",error);
         return res.json({
-            msg : "invalid"
+            Status : false,
+            message : "invalid"
         })
     }
 }

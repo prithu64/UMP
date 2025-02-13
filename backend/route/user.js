@@ -175,7 +175,7 @@ router.post("/signin",async(req,res)=>{
     const role = user.role;
 
     console.log("generate token")
-    const token  = jwt.sign({userId,role},JWT_SECRET,{expiresIn:"1h"});
+    const token  = jwt.sign({userId,role},JWT_SECRET,{expiresIn:"2h"});
 
 
     //set the token in a cookie
@@ -223,7 +223,9 @@ router.post("/forgotPassword",async(req,res)=>{
     .then(user=>{
         if(!user){
             console.log("user not found")
-            return res.json({message:"User not found "})
+            return res.json({
+                Status : false,
+                message:"User not found "})
         }
         const token = jwt.sign({id : user._id},JWT_SECRET,{expiresIn:"1d"})
         
@@ -238,27 +240,34 @@ router.post("/forgotPassword",async(req,res)=>{
           var mailOptions = {
             from: 'youremail@gmail.com',
             to: req.body.email ,
-            subject: 'Sending Email using Node.js',
+            subject: 'Reset Link',
             text: `http://localhost:5173/reset-password/${user._id}/${token}`
           };
+          console.log("mail sent")
           
           transporter.sendMail(mailOptions, function(error, info){
             if (error) {
               console.log(error);
+              return res.json({
+                Status:false,
+                message : "failed"
+              })
             } else {
-              return res.send({Status : "Success"})
+              return res.json({
+                Status : true,
+                message : "Success"})
             }
           });
     })
 
 })
 
-router.put("/reset-password",async(req,res)=>{
+router.put("/reset-password/:id/:token",async(req,res)=>{
    const  {id,token} = req.params;
    console.log("checking password")
-   const {success} = passwordSchema.safeParse(req.body.password);
-   if(!success){
-    console.log("password validation failed")
+   const result = passwordSchema.safeParse(req.body);
+   if(!result.success){
+    console.log("password validation failed",result.error.errors)
     return res.json({
         Status : false ,
         message : "Invalid Password"
@@ -271,7 +280,7 @@ router.put("/reset-password",async(req,res)=>{
      const hashedpassword = await bcrypt.hash(req.body.password,saltRounds)
      
      console.log("updating password")
-     await User.findByIdAndUpdate({_id : id},{password : hashedpassword})
+     await User.findByIdAndUpdate( id,{password : hashedpassword})
      console.log("password updated")
 
      res.json({
@@ -280,7 +289,11 @@ router.put("/reset-password",async(req,res)=>{
      })
 
    } catch (error) {
-    console.log("error : ",error)
+    console.log("error : ",error);
+    return res.status(500).json({
+        Status : false,
+        message : "Server error"
+    })
    }
   
 })

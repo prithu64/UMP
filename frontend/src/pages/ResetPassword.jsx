@@ -19,7 +19,11 @@ export default function ResetPassword(){
             password
           },{withCredentials:true}).then(res=>{
             if(res.data.Status){
+             alert(res.data.message)
              navigate("/signin");
+            }
+            if(res.data.Status === false){
+                alert(res.data.message)
             }
           })
        } catch (error) {

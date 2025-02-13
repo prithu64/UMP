@@ -37,6 +37,7 @@ export default function UserDash(){
      async function handleForgotPassword(){
         try {
             window.confirm("Reset password ?");
+            navigate("/forgotPassword")
         } catch (error) {
           console.log("error :",error)
         }
