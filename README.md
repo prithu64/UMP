@@ -35,10 +35,16 @@ Install dependencies
   npm install
 ```
 
-Start the server
+Start the frontend
 
 ```bash
   npm run dev
+```
+
+Start the server(backend)
+
+```bash
+  nodemon index.js
 ```
 
 ## Screenshots
